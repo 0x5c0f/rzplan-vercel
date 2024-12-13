@@ -26,7 +26,7 @@ def parse_cors(v: Any) -> list[str] | str:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./backend/)
-        env_file="../.env",
+        env_file=".env",
         env_ignore_empty=True,
         extra="ignore",
     )
@@ -94,8 +94,10 @@ class Settings(BaseSettings):
     # TODO: update type to EmailStr when sqlmodel supports it
     EMAIL_TEST_USER: str = "test@example.com"
     # TODO: update type to EmailStr when sqlmodel supports it
-    FIRST_SUPERUSER: str
-    FIRST_SUPERUSER_PASSWORD: str
+
+    # 此项参数只有在第一次使用是才会用到, 取消校验减少 vercel 变量传递 
+    FIRST_SUPERUSER: str | None = None
+    FIRST_SUPERUSER_PASSWORD: str | None = None
 
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
@@ -117,6 +119,11 @@ class Settings(BaseSettings):
         )
 
         return self
+
+    DOMAIN: str | None = None
+
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "[%(asctime)s] - %(levelname)s - %(message)s"
 
 
 settings = Settings()  # type: ignore
