@@ -16,7 +16,7 @@ from app.rz.models.performance_tracking_config import (
     PerformanceTrackingConfigCreate,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/performance/webpage/tracking_config", tags=["performance_tracking_config"])
 
 @router.post("/", 
         response_model=PerformanceTrackingConfigPublic,

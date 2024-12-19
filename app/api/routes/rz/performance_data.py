@@ -21,7 +21,7 @@ from app.rz.utils.utils import performance_data_metrics, generate_pcheck_js_file
 from app.core.config import settings
 
 
-router = APIRouter()
+router = APIRouter(prefix="/performance/webpage/data", tags=["performance_data"])
 
 # 调用函数以创建指标和注册表
 metrics, registry = performance_data_metrics()
