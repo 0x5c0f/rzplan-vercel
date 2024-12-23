@@ -4,6 +4,14 @@ from jinja2 import Template
 
 import random
 import string
+import json
+
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dysmsapi20170525.client import Client as Dysmsapi20170525Client
+from alibabacloud_dysmsapi20170525 import models as dysmsapi_20170525_models
+from alibabacloud_tea_util import models as util_models
+
+from app.rz.models.notification import AliyunSMSData
 
 def performance_data_metrics():
     registry = CollectorRegistry()
@@ -85,3 +93,28 @@ def generate_pcheck_js_file(filepath: str, **context) -> str:
         content = file.read()
     template = Template(content)
     return template.render(**context)
+
+
+async def aliyun_sms_send(AliyunSMSData: AliyunSMSData) -> dysmsapi_20170525_models.SendSmsResponse:
+    """
+        发送阿里云短信
+    """
+    # create client
+    config = open_api_models.Config(
+        access_key_id=AliyunSMSData.aliyun_key_data.access_key_id.get_secret_value(),
+        access_key_secret=AliyunSMSData.aliyun_key_data.access_key_secret.get_secret_value()
+    )
+    
+    config.endpoint = f'dysmsapi.aliyuncs.com'
+    
+    client = Dysmsapi20170525Client(config)
+    
+    send_sms_request = dysmsapi_20170525_models.SendSmsRequest(
+        phone_numbers=AliyunSMSData.phone_number,
+        sign_name=AliyunSMSData.sign_name,
+        template_code=AliyunSMSData.template_code,
+        template_param=json.dumps(AliyunSMSData.template_param)
+    )
+    
+    runtime = util_models.RuntimeOptions()
+    return client.send_sms_with_options(send_sms_request, runtime)
