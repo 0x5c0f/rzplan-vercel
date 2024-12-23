@@ -9,7 +9,9 @@ api_router.include_router(utils.router, prefix="/utils", tags=["utils"])
 # api_router.include_router(items.router, prefix="/items", tags=["items"])
 
 
-from app.api.routes.rz import performance_data, performance_tracking_config
+from app.api.routes.rz import performance_data, performance_tracking_config, notification
 
 api_router.include_router(performance_tracking_config.router)
 api_router.include_router(performance_data.router)
+
+api_router.include_router(notification.router)
