@@ -7,7 +7,7 @@
 - `master` 分支为发布分支， 用于发布到 `vercel`
 - `sync-repo` 分支是同步分支，主要用于同步上游项目的修改
 - `devement` 为开发分支
-- `pre-dev` 为预发布分支
+- `release` 为预发布分支
 -------- 
 
 # backend for the project
