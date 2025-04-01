@@ -26,9 +26,9 @@ $> uvicorn app.main:app --reload
 $> bash scripts/prestart.sh
 ```
 
-## 数据库升级回滚 - 开发时使用
+## 数据库升级回滚 - 开发时使用 
 ```bash
-$> alembic revision --autogenerate -m  'commit message'
+$> alembic revision --autogenerate -m  'commit message'     # commit message 最好是英文
 # 修改对应内容
 $> alembic upgrade head
 
@@ -40,3 +40,6 @@ $> alembic downgrade -1
 ```bash
 $> python app/tests/scripts/generate_test_performance_data.py
 ```
+
+## 访问 
+- `http://127.0.0.1:8000/docs`
