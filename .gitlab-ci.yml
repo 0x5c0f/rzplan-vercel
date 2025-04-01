@@ -12,7 +12,7 @@ docker-build:
   script:
     - docker-compose -f docker-compose-build.yml build
   rules:
-    - if: $CI_COMMIT_BRANCH == release
+    - if: $CI_COMMIT_BRANCH == "release"
       exists:
         - docker-compose-build.yml
     
