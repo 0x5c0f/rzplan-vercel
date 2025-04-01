@@ -1,0 +1,9 @@
+.venv
+.vscode 
+.mypy_cache
+.git
+
+.env
+README.md
+Dockerfile
+
