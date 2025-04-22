@@ -125,30 +125,65 @@ import matplotlib.pyplot as plt
 import os
 import tempfile
 from typing import Dict
+import matplotlib.font_manager as font_manager
+from functools import lru_cache
+from pathlib import Path
+
+
+@lru_cache(maxsize=None)
+def _get_system_fonts_list() -> list:
+    """
+    获取系统字体列表，并缓存结果。
+    """
+    return font_manager.findSystemFonts(fontpaths=None, fontext='ttf')
+
+@lru_cache(maxsize=None)
+def _get_local_fonts_dict(font_exts: tuple = ('.ttf', '.otf', '.ttc')) -> dict:
+    """
+    扫描 assets/fonts 目录，将字体文件的文件名（不含扩展名，小写）映射到其完整路径，进行缓存。
+    """
+    fonts = {}
+    local_fonts_dir = Path(__file__).parent.parent / "assets" / "fonts"
+    if local_fonts_dir.exists():
+        for font_file in local_fonts_dir.rglob("*"):
+            if font_file.suffix.lower() in font_exts:
+                fonts[font_file.stem.lower()] = str(font_file)
+    return fonts
 
 def get_font_path(font_name: str) -> str:
     """
     根据传入的字体名称或路径，返回一个可用的字体文件路径。
     如果 font_name 是一个存在的文件路径，则直接返回；
-    否则，将其作为字体名称在系统中进行匹配，找不到时使用第一个系统默认字体。
+    如果是字体名称，优先在 assets/fonts 目录中查找对应的字体文件，找不到时，
+    在系统中查找对应的字体文件。如果系统中也找不到，则返回第一个系统默认字体。
     """
+
+    # 如果传入的是一个路径, 存在文件则直接返回
     if os.path.exists(font_name):
         return font_name
+    
+    FONT_EXTS = ('.ttf', '.otf', '.ttc')
+    local_fonts = _get_local_fonts_dict(FONT_EXTS)
+
+    local_path = Path(font_name)
+    
+    if local_path.stem.lower() in local_fonts:
+        return local_fonts[local_path.stem.lower()]
+    
+    system_fonts = _get_system_fonts_list()
+    matched_font = None
+    # 匹配时忽略大小写，检查字体名称是否在系统字体文件名中出现
+    for font_file in system_fonts:
+        sys_font_file = Path(font_file)
+        if font_name.lower() in sys_font_file.stem.lower():
+            matched_font = font_file
+            break
+    if matched_font:
+        return matched_font
+    elif system_fonts:
+        return system_fonts[0]
     else:
-        import matplotlib.font_manager as font_manager
-        system_fonts = font_manager.findSystemFonts(fontpaths=None, fontext='ttf')
-        matched_font = None
-        # 匹配时忽略大小写，检查字体名称是否在系统字体文件名中出现
-        for font_file in system_fonts:
-            if font_name.lower() in os.path.basename(font_file).lower():
-                matched_font = font_file
-                break
-        if matched_font:
-            return matched_font
-        elif system_fonts:
-            return system_fonts[0]
-        else:
-            raise ValueError("指定的字体不存在且无法找到系统默认字体")
+        raise ValueError("指定的字体不存在且无法找到系统默认字体")
 
 async def tagcloud_generator(
     tag_data: TagCloudPublic
