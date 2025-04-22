@@ -5,7 +5,7 @@ class TagCloudData(BaseModel):
     count: int = Field(..., gt=0)
 
 class TagCloudPublic(BaseModel):
-    font: str = Field(default="msyhl")
+    font: str = Field(default="Arial")
     width: int = Field(default=800)
     height: int = Field(default=400)
     background_color: str = Field(default="white")
