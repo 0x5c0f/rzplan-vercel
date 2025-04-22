@@ -7,3 +7,5 @@
 README.md
 Dockerfile
 
+.vercel
+.gitlab-ci.yml
