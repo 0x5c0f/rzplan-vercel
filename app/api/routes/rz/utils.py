@@ -71,5 +71,5 @@ async def generate_tagcloud(
         logger.error(f"生成标签云失败: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="生成标签云失败，请稍后重试"
+            detail=f"生成标签云失败: {str(e)}"
         )
