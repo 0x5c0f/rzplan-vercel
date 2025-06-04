@@ -1,12 +1,13 @@
 from typing import List, Dict
-from fastapi import UploadFile, HTTPException
+from fastapi import UploadFile, HTTPException, Form
 from app.rz.utils.logger import logger
-from app.rz.utils.comfyui_controller import ComfyUIController
+from app.rz.utils.comfyui.api_controller import ComfyUIController
 
-async def upload_images_to_comfyui(
-    images: List[UploadFile],
-    comfyui_controller: ComfyUIController
-) -> Dict:
+import json
+from app.rz.models.comfyui_workflow import ComfyUIWorkflow, WorkFlowNodeInfo
+from pydantic import ValidationError
+
+async def upload_images_to_comfyui(images: List[UploadFile], comfyui_controller: ComfyUIController) -> Dict:
     """
     上传多个图片到ComfyUI服务器
     
@@ -68,3 +69,60 @@ async def upload_images_to_comfyui(
         "file_mapping": file_mapping,
         "upload_details": uploaded_files
     }
+    
+async def parse_workflow_data(data_in: str = Form(...)) -> List[ComfyUIWorkflow]:
+    """
+    解析工作流数据的依赖项函数
+    将 Form 中的 JSON 字符串解析为 ComfyUIWorkflow 列表
+    
+    支持两种输入格式：
+    1. inputs 为字典: {"node_id": 0, "inputs": {"key": "value"}}
+    2. inputs 为字典数组: {"node_id": 0, "inputs": [{"key": "value"}]}
+    """
+    try:
+        logger.debug(f"Raw workflow data: {data_in}")
+        parsed_data = json.loads(data_in)
+        
+        workflows = []
+        # 统一转换为标准格式
+        if isinstance(parsed_data, list):
+            for item in parsed_data:
+                if isinstance(item.get("inputs"), dict):
+                    # 格式1: 将字典转换为数组
+                    workflows.append(ComfyUIWorkflow(
+                        node_id=item["node_id"],
+                        inputs=[WorkFlowNodeInfo(**item["inputs"])]
+                    ))
+                else:
+                    # 格式2: 已经是正确格式
+                    workflows.append(ComfyUIWorkflow(
+                        node_id=item["node_id"],
+                        inputs=[WorkFlowNodeInfo(**i) for i in item["inputs"]]
+                    ))
+        else:
+            if parsed_data:
+                workflows.append(ComfyUIWorkflow(
+                    node_id=parsed_data["node_id"],
+                    inputs=[WorkFlowNodeInfo(**parsed_data["inputs"])]
+                    if isinstance(parsed_data["inputs"], dict)
+                    else [WorkFlowNodeInfo(**i) for i in parsed_data["inputs"]]
+                ))
+                
+        logger.info(f"Parsed {len(workflows)} workflow items")
+        return workflows
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid JSON format: {str(e)}"
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=422, 
+            detail=f"Data validation error: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Unexpected error while parsing workflow data: {str(e)}"
+        )
+

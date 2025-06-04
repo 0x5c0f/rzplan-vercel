@@ -1,17 +1,13 @@
 from fastapi import APIRouter,HTTPException, UploadFile, File, Depends
 from fastapi.responses import FileResponse
-from app.rz.models.notification import AliyunSMSData
-from app.rz.utils.logger import logger
-
-from app.rz.models.tagcloud import TagCloudPublic
-from app.rz.utils.utils import tagcloud_generator
-
-from app.rz.utils.utils import aliyun_sms_send
-
-from app.rz.utils.comfyui_controller import ComfyUIController
-from app.rz.crud.comfyui_controller import upload_images_to_comfyui
 from typing import List, Dict
+from app.rz.utils.logger import logger
+from app.rz.utils.utils import tagcloud_generator, aliyun_sms_send
+from app.rz.utils.comfyui.api_controller import ComfyUIController
+from app.rz.crud.comfyui_controller import upload_images_to_comfyui, parse_workflow_data
 
+from app.rz.models.notification import AliyunSMSData
+from app.rz.models.tagcloud import TagCloudPublic
 from app.rz.models.comfyui_workflow import ComfyUIWorkflowPublic
 
 router = APIRouter(prefix="/utils", tags=["utils"])
@@ -78,7 +74,7 @@ async def generate_tagcloud(
             status_code=500,
             detail=f"生成标签云失败: {str(e)}"
         )
-        
+
 
 @router.post("/comfyui/upload-image")
 async def upload_image_to_comfyui(
@@ -114,13 +110,51 @@ async def upload_image_to_comfyui(
     finally:
         await comfyui_controller.close()
         
+from app.rz.utils.comfyui.workflow_controller import WorkflowController
+
 @router.post("/comfyui/workflow_queue")
 async def workflow_queue(
-    data_in: ComfyUIWorkflowPublic,
-    workflow: UploadFile = File(), 
+    workflow_file: UploadFile = File(...),
+    data_in: ComfyUIWorkflowPublic = Depends(parse_workflow_data)
 ) -> Dict:
-    """创建工作流队列，并返回结果"""
-    pass
+    """
+    创建工作流队列，并返回结果
 
+    - **workflow**: 工作流文件
+    - **data_in**:  待修改工作流数据，例如：
+      ```json
+      [
+        {
+          "node_id": 0,
+          "inputs": [
+            {
+                "node_input_key": "images",
+                "node_input_value": "bd7d2c0e-4ab0-4639-bfd6-d55a0f0cf3ec.jpg"
+            }
+          ]
+        }
+      ]
+      ```
+    """
+    workflowController = WorkflowController(workflow_file)
+    try:
+        async with workflowController:
+            processed = 0
+            for workflow in data_in:
+                if await workflowController.update_node_input(workflow):
+                    processed += 1
+        
+        return {
+            "message": "Upload successful",
+            "status": "processed",
+            "processed_nodes": processed,
+            "total_nodes": len(data_in)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Workflow processing failed: {str(e)}"
+        )
 
 ## 工作流任务查询
