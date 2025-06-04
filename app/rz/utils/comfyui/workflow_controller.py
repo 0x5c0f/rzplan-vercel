@@ -27,7 +27,9 @@ class WorkflowController:
         for input_item in node_info.inputs:
             self.workflow[node_id]['inputs'][input_item.node_input_key] = input_item.node_input_value
             
-        return True
+        return self.workflow
+        # return json.dumps(self.workflow,ensure_ascii=False)
+
 
     def get_nodes(self) -> List[str]:
         """获取所有节点ID列表"""
