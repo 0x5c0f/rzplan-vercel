@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, Optional, List
 from fastapi import UploadFile
 
-from app.rz.models.comfyui_workflow import ComfyUIWorkflow
+from app.rz.models.comfyui_workflow import WorkFlowNodeInputs
 from app.rz.utils.logger import logger
 
 class WorkflowController:
@@ -10,15 +10,15 @@ class WorkflowController:
         self.workflow_file = workflow_file
         self.workflow: Dict[str, Any] = {}
 
-    async def update_node_input(self, node_info: ComfyUIWorkflow | None = None):
+    async def update_node_input(self, node_info: WorkFlowNodeInputs | None = None):
         if node_info is None:
             error_msg = "工作流节点信息为空"
             logger.error(error_msg)
             raise ValueError(error_msg)
             
-        node_id = node_info.node_id
+        node_id = str(node_info.node_id)
         logger.debug(f"当前修改节点 {node_id}, 工作流: {self.workflow}")
-        if str(node_id) not in self.workflow:
+        if node_id not in self.workflow:
             error_msg = f"工作流节点 {node_id} 不存在"
             logger.error(error_msg)
             raise KeyError(error_msg)

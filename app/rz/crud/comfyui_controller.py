@@ -4,7 +4,7 @@ from app.rz.utils.logger import logger
 from app.rz.utils.comfyui.api_controller import ComfyUIController
 
 import json
-from app.rz.models.comfyui_workflow import ComfyUIWorkflow, WorkFlowNodeInfo
+from app.rz.models.comfyui_workflow import WorkFlowNodeInputs, WorkFlowNodeInput
 from pydantic import ValidationError
 
 async def upload_images_to_comfyui(images: List[UploadFile], comfyui_controller: ComfyUIController) -> Dict:
@@ -70,10 +70,10 @@ async def upload_images_to_comfyui(images: List[UploadFile], comfyui_controller:
         "upload_details": uploaded_files
     }
     
-async def parse_workflow_data(data_in: str = Form(...)) -> List[ComfyUIWorkflow]:
+async def parse_workflow_data(data_in: str = Form(...)) -> List[WorkFlowNodeInputs]:
     """
     解析工作流数据的依赖项函数
-    将 Form 中的 JSON 字符串解析为 ComfyUIWorkflow 列表
+    将 Form 中的 JSON 字符串解析为 WorkFlowNodeInputs 列表
     
     支持两种输入格式：
     1. inputs 为字典: {"node_id": 0, "inputs": {"key": "value"}}
@@ -89,23 +89,23 @@ async def parse_workflow_data(data_in: str = Form(...)) -> List[ComfyUIWorkflow]
             for item in parsed_data:
                 if isinstance(item.get("inputs"), dict):
                     # 格式1: 将字典转换为数组
-                    workflows.append(ComfyUIWorkflow(
+                    workflows.append(WorkFlowNodeInputs(
                         node_id=item["node_id"],
-                        inputs=[WorkFlowNodeInfo(**item["inputs"])]
+                        inputs=[WorkFlowNodeInput(**item["inputs"])]
                     ))
                 else:
                     # 格式2: 已经是正确格式
-                    workflows.append(ComfyUIWorkflow(
+                    workflows.append(WorkFlowNodeInputs(
                         node_id=item["node_id"],
-                        inputs=[WorkFlowNodeInfo(**i) for i in item["inputs"]]
+                        inputs=[WorkFlowNodeInput(**i) for i in item["inputs"]]
                     ))
         else:
             if parsed_data:
-                workflows.append(ComfyUIWorkflow(
+                workflows.append(WorkFlowNodeInputs(
                     node_id=parsed_data["node_id"],
-                    inputs=[WorkFlowNodeInfo(**parsed_data["inputs"])]
+                    inputs=[WorkFlowNodeInput(**parsed_data["inputs"])]
                     if isinstance(parsed_data["inputs"], dict)
-                    else [WorkFlowNodeInfo(**i) for i in parsed_data["inputs"]]
+                    else [WorkFlowNodeInput(**i) for i in parsed_data["inputs"]]
                 ))
                 
         logger.info(f"Parsed {len(workflows)} workflow items")

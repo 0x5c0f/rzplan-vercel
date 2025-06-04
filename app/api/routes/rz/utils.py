@@ -8,7 +8,7 @@ from app.rz.crud.comfyui_controller import upload_images_to_comfyui, parse_workf
 
 from app.rz.models.notification import AliyunSMSData
 from app.rz.models.tagcloud import TagCloudPublic
-from app.rz.models.comfyui_workflow import ComfyUIWorkflowPublic
+from app.rz.models.comfyui_workflow import WorkFlowNode
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -115,7 +115,9 @@ from app.rz.utils.comfyui.workflow_controller import WorkflowController
 @router.post("/comfyui/workflow_queue")
 async def workflow_queue(
     workflow_file: UploadFile = File(...),
-    data_in: ComfyUIWorkflowPublic = Depends(parse_workflow_data)
+    data_in: WorkFlowNode = Depends(parse_workflow_data),
+    comfyui_server_host: str = None,
+    comfyui_server_port: str = None
 ) -> Dict:
     """
     创建工作流队列，并返回结果
@@ -143,7 +145,7 @@ async def workflow_queue(
             for workflow in data_in:
                 if await workflowController.update_node_input(workflow):
                     processed += 1
-        
+
         return {
             "message": "Upload successful",
             "status": "processed",
