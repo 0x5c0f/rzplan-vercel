@@ -1,11 +1,12 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from fastapi import UploadFile, HTTPException, Form
 from app.rz.utils.logger import logger
 from app.rz.utils.comfyui.api_controller import ComfyUIController
 
 import json
-from app.rz.models.comfyui_workflow import WorkFlowNodeInputs, WorkFlowNodeInput
 from pydantic import ValidationError
+
+from app.rz.models.comfyui_workflow import WorkFlowNodePublic,WorkFlowImageUploadPublic
 
 async def upload_images_to_comfyui(images: List[UploadFile], comfyui_controller: ComfyUIController) -> Dict:
     """
@@ -70,59 +71,49 @@ async def upload_images_to_comfyui(images: List[UploadFile], comfyui_controller:
         "upload_details": uploaded_files
     }
     
-async def parse_workflow_data(data_in: str = Form(...)) -> List[WorkFlowNodeInputs]:
+async def parse_workflow_data(data_in: str = Form(...)) -> WorkFlowNodePublic:
     """
     解析工作流数据的依赖项函数
-    将 Form 中的 JSON 字符串解析为 WorkFlowNodeInputs 列表
-    
-    支持两种输入格式：
-    1. inputs 为字典: {"node_id": 0, "inputs": {"key": "value"}}
-    2. inputs 为字典数组: {"node_id": 0, "inputs": [{"key": "value"}]}
+    将 Form 中的 JSON 字符串解析为 WorkFlowNodePublic 列表
     """
     try:
-        logger.debug(f"Raw workflow data: {data_in}")
-        parsed_data = json.loads(data_in)
-        
-        workflows = []
-        # 统一转换为标准格式
-        if isinstance(parsed_data, list):
-            for item in parsed_data:
-                if isinstance(item.get("inputs"), dict):
-                    # 格式1: 将字典转换为数组
-                    workflows.append(WorkFlowNodeInputs(
-                        node_id=item["node_id"],
-                        inputs=[WorkFlowNodeInput(**item["inputs"])]
-                    ))
-                else:
-                    # 格式2: 已经是正确格式
-                    workflows.append(WorkFlowNodeInputs(
-                        node_id=item["node_id"],
-                        inputs=[WorkFlowNodeInput(**i) for i in item["inputs"]]
-                    ))
-        else:
-            if parsed_data:
-                workflows.append(WorkFlowNodeInputs(
-                    node_id=parsed_data["node_id"],
-                    inputs=[WorkFlowNodeInput(**parsed_data["inputs"])]
-                    if isinstance(parsed_data["inputs"], dict)
-                    else [WorkFlowNodeInput(**i) for i in parsed_data["inputs"]]
-                ))
-                
-        logger.info(f"Parsed {len(workflows)} workflow items")
-        return workflows
+        logger.info(f"Received data: {data_in}")
+        # 解析 JSON 字符串
+        data_dict = json.loads(data_in)
+        # 直接使用构造函数，这在 v1 和 v2 中都有效
+        return WorkFlowNodePublic(**data_dict)
     except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=400, 
-            detail=f"Invalid JSON format: {str(e)}"
+            detail=f"Invalid JSON format in data_in: {str(e)}"
         )
-    except ValidationError as e:
+    except (ValidationError, TypeError) as e:
         raise HTTPException(
-            status_code=422, 
-            detail=f"Data validation error: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Unexpected error while parsing workflow data: {str(e)}"
+            status_code=400, 
+            detail=f"Validation error in data_in: {str(e)}"
         )
 
+async def parse_server_info(data_in: Optional[str] = None) -> WorkFlowImageUploadPublic:
+    """
+    解析服务器信息的依赖项函数
+    
+    当 data_in 为 None 时返回默认配置
+    """
+    if data_in is None:
+        return WorkFlowImageUploadPublic()
+        
+    try:
+        # 解析 JSON 字符串
+        data_dict = json.loads(data_in)
+        # 直接使用构造函数，这在 v1 和 v2 中都有效
+        return WorkFlowImageUploadPublic(**data_dict)
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid JSON format in data_in: {str(e)}"
+        )
+    except (ValidationError, TypeError) as e:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Validation error in data_in: {str(e)}"
+        )

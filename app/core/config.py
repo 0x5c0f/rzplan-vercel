@@ -127,6 +127,7 @@ class Settings(BaseSettings):
     
     COMFYUI_SERVER_PORT: int = 8188
     COMFYUI_SERVER_HOST: str = "127.0.0.1"
+    COMFYUI_CACHE_DIR: str = "/tmp/comfyui"
     
 
 settings = Settings()  # type: ignore

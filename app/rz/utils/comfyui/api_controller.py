@@ -17,10 +17,7 @@ class ComfyUIController:
         server_host: str | None = None, 
         server_port: str | None = None
     ):
-        host = server_host if server_host is not None else settings.COMFYUI_SERVER_HOST
-        port = server_port if server_port is not None else settings.COMFYUI_SERVER_PORT
-        self.server_url = f"{host}:{port}"
-        # self.server_url = f"{server_host}:{server_port}"
+        self.server_url = f"{server_host}:{server_port}"
         self.client_id = str(uuid4())
         self.ws = None
         self.client = httpx.AsyncClient(timeout=30.0)
