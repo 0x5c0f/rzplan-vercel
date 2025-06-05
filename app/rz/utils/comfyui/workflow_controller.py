@@ -1,14 +1,14 @@
 import json
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 from fastapi import UploadFile
 
 from app.rz.models.comfyui_workflow import WorkFlowNodeInputs
 from app.rz.utils.logger import logger
 
 class WorkflowController:
-    def __init__(self, workflow_file: Optional[UploadFile] = None):
-        self.workflow_file = workflow_file
-        self.workflow: Dict[str, Any] = {}
+    def __init__(self, workflow_file: Optional[Union[UploadFile, Dict[str, Any]]] = None):
+        self.workflow_file = workflow_file if isinstance(workflow_file, UploadFile) else None
+        self.workflow: Dict[str, Any] = workflow_file if isinstance(workflow_file, dict) else {}
 
     async def update_node_input(self, node_info: WorkFlowNodeInputs | None = None):
         if node_info is None:
@@ -57,9 +57,52 @@ class WorkflowController:
 
     def find_nodes_by_class(self, class_type: str) -> List[str]:
         """根据类型查找节点"""
-        return [node_id for node_id, node_data in self.workflow.items() 
+        return [node_id for node_id, node_data in self.workflow.items()
                 if node_data.get('class_type') == class_type]
 
+    def find_save_images_node_id_by_classtype(self, class_type: str) -> List[str]:
+        """专门处理ComfyUI格式工作流，根据类型查找节点"""
+        if not isinstance(self.workflow, dict):
+            return []
+            
+        save_image_nodes = {}
+        
+        def search_for_nodes(current_data):
+            if isinstance(current_data, dict):
+                for key, value in current_data.items():
+                    if isinstance(value, dict) and value.get("class_type") == class_type:
+                        save_image_nodes[key] = value
+                    else:
+                        search_for_nodes(value)
+            elif isinstance(current_data, list):
+                for item in current_data:
+                    search_for_nodes(item)
+
+        search_for_nodes(self.workflow)
+        logger.info("Found nodes: %s", save_image_nodes)
+        return list(save_image_nodes.keys())
+        # # 如果是标准ComfyUI格式
+        # if "prompt" in self.workflow and isinstance(self.workflow["prompt"], list) and len(self.workflow["prompt"]) > 1:
+        #     nodes = self.workflow["prompt"][1]
+        #     return [node_id for node_id, node_data in nodes.items()
+        #            if isinstance(node_data, dict) and node_data.get('class_type') == class_type]
+        
+        # # 默认行为
+        # return self.find_nodes_by_class(class_type)
+
+    def find_output_images_node_by_save_images_node_id(self, save_image_id: str):
+        """根据保存图片ID查找输出图片节点"""
+        outputs_section = None
+        for key, value in self.workflow.items():
+            if isinstance(value, dict) and "outputs" in value:
+                outputs_section = value.get("outputs")
+                break # Assuming only one 'outputs' section at this level
+
+        if outputs_section and save_image_id in outputs_section:
+            return outputs_section[save_image_id]
+        else:
+            return None
+        
     def find_nodes_by_input_key(self, input_key: str) -> List[str]:
         """根据输入参数键查找节点"""
         return [node_id for node_id, node_data in self.workflow.items() 
@@ -123,7 +166,7 @@ class WorkflowController:
 
     async def __aenter__(self):
         """异步上下文管理器入口，加载工作流文件"""
-        if self.workflow_file:
+        if isinstance(self.workflow_file, UploadFile):
             try:
                 content = await self.workflow_file.read()
                 self.workflow = json.loads(content)

@@ -1,17 +1,16 @@
 from fastapi import APIRouter,HTTPException, UploadFile, File, Depends, Query
 from fastapi.responses import FileResponse
 from typing import List, Dict
+from app.rz.utils.comfyui import workflow_controller
 from app.rz.utils.logger import logger
 from app.rz.utils.utils import tagcloud_generator, aliyun_sms_send
 from app.rz.utils.comfyui.api_controller import ComfyUIController
 from app.rz.utils.comfyui.workflow_controller import WorkflowController
-from app.rz.crud.comfyui_controller import upload_images_to_comfyui, parse_workflow_data
+from app.rz.crud.comfyui_controller import upload_images_to_comfyui, parse_workflow_data, parse_server_info
 
 from app.rz.models.notification import AliyunSMSData
 from app.rz.models.tagcloud import TagCloudPublic
-from app.rz.models.comfyui_workflow import WorkFlowNodePublic, ComfyUITaskPublic
-
-from uuid import UUID
+from app.rz.models.comfyui_workflow import WorkFlowNodePublic, ComfyUITaskPublic, WorkFlowImageUploadPublic
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -77,10 +76,6 @@ async def generate_tagcloud(
             status_code=500,
             detail=f"生成标签云失败: {str(e)}"
         )
-
-
-from app.rz.crud.comfyui_controller import parse_server_info
-from app.rz.models.comfyui_workflow import WorkFlowImageUploadPublic
 
 @router.post("/comfyui/upload-image")
 async def upload_image_to_comfyui(
@@ -191,6 +186,7 @@ async def workflow_queue(
             detail=f"Workflow processing failed: {str(e)}"
         )
 
+import asyncio
 
 @router.post("/comfyui/workflow/task")
 async def workflow_task(
@@ -199,23 +195,38 @@ async def workflow_task(
     """
     查询任务{task_id}，并返回执行结果
     - task_id: 任务ID
-    - comfyui_server_host: 可选，指定comfyui服务器地址
-    - comfyui_server_port: 可选，指定comfyui服务器端口
     """
     
     comfyui_controller = ComfyUIController(data_in.server_info.server_host, data_in.server_info.server_port)
-
 
     prompt_id = str(data_in.task_id)
 
     try:
         async with comfyui_controller:
-            result = await comfyui_controller.get_result(prompt_id)
+            try:
+                result = await comfyui_controller.get_result(prompt_id)
+                if prompt_id in result:
+                    workflow_controller = WorkflowController(result)
+                    async with workflow_controller:
+                        save_images_node_id = workflow_controller.find_save_images_node_id_by_classtype("SaveImage")
+                    # 获取到保存图像的节点id是多少
+                        for image_id in save_images_node_id:
+                            logger.info(f"获取到保存图像的节点id: {image_id}")
+                            output_node = workflow_controller.find_output_images_node_by_save_images_node_id(image_id)
+                            # {'images': [{'filename': 'ComfyUI_00323_.png', 'subfolder': '', 'type': 'output'}]}
+                            logger.info(f"获取到图像保存结果节点信息: {output_node}")
+                            # TODO： 传入comfyui_controller 中
+            except Exception as e:
+                logger.error(f"获取结果时出错: {str(e)}")
+                await asyncio.sleep(1)
+            
             if prompt_id in result:
-                print(result)
+                pass
                 # 获取到保存图像的节点id是多少
-                
-        print("result:")
+
+                # await comfyui_controller
+            #     await comfyui_controller.download_images(result[prompt_id]["outputs"])
+            # await asyncio.sleep(1)
         # # 获取结果
         # while True:
         #     try:
