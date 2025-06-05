@@ -12,6 +12,8 @@ from app.rz.models.notification import AliyunSMSData
 from app.rz.models.tagcloud import TagCloudPublic
 from app.rz.models.comfyui_workflow import WorkFlowNodePublic, ComfyUITaskPublic, WorkFlowImageUploadPublic
 
+from app.rz.utils.utils import create_images_zip
+
 router = APIRouter(prefix="/utils", tags=["utils"])
 
 @router.post("/notify/aliyun_sms/")
@@ -195,10 +197,16 @@ from fastapi.responses import StreamingResponse
 @router.post("/comfyui/workflow/task")
 async def workflow_task(
     data_in: ComfyUITaskPublic
-):
+) -> StreamingResponse:
     """
     查询任务{task_id}，并返回执行结果
+    Args:
     - task_id: 任务ID
+    
+    Returns:
+    - StreamingResponse: 包含所有生成图像的 ZIP 文件
+    
+    
     """
     
     comfyui_controller = ComfyUIController(data_in.server_info.server_host, data_in.server_info.server_port)
@@ -214,7 +222,7 @@ async def workflow_task(
                     image_files = []
                     async with workflow_controller:
                         save_images_node_id = workflow_controller.find_save_images_node_id_by_classtype("SaveImage")
-                    # 获取到保存图像的节点id是多少
+                        # 获取到保存图像的节点id是多少
                         for image_id in save_images_node_id:
                             logger.info(f"获取到保存图像的节点id: {image_id}")
                             output_node = workflow_controller.find_output_images_node_by_save_images_node_id(image_id)
@@ -222,7 +230,7 @@ async def workflow_task(
                             logger.info(f"获取到图像保存结果节点信息: {output_node}")
                             for image_info in output_node.get('images', []):
                                 image_files.append(image_info['filename'])
-                
+
                 logger.info(f"待保存图像文件列表: {image_files}")
 
                 # 下载指定文件名的图片
@@ -232,23 +240,20 @@ async def workflow_task(
                         status_code=404,
                         detail="未找到输出图片"
                 )
-                    
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                    for filename, file_data in output_images:
-                        zip_file.writestr(filename, file_data)
+                
+                zip_data = await create_images_zip(output_images)
                 
                 # 返回zip文件
-                zip_buffer.seek(0)
                 return StreamingResponse(
-                    zip_buffer,
+                    io.BytesIO(zip_data),
                     media_type="application/zip",
                     headers={
                         "Content-Disposition": f"attachment; filename=comfyui_output_{prompt_id}.zip",
-                        "Content-Length": str(zip_buffer.getbuffer().nbytes)
+                        "Content-Length": str(len(zip_data)),
+                        "Content-Type": "application/zip"
                     }
                 )
-                
+
             except Exception as e:
                 logger.error(f"获取结果时出错: {str(e)}")
                 await asyncio.sleep(1)
