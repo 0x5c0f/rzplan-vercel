@@ -1,7 +1,8 @@
-from fastapi import APIRouter,HTTPException, UploadFile, File, Depends, Query
-from fastapi.responses import FileResponse
+import asyncio
+import io
+from fastapi import APIRouter,HTTPException, UploadFile, File, Depends
+from fastapi.responses import FileResponse, StreamingResponse
 from typing import List, Dict
-from app.rz.utils.comfyui import workflow_controller
 from app.rz.utils.logger import logger
 from app.rz.utils.utils import tagcloud_generator, aliyun_sms_send
 from app.rz.utils.comfyui.api_controller import ComfyUIController
@@ -188,12 +189,6 @@ async def workflow_queue(
             detail=f"Workflow processing failed: {str(e)}"
         )
 
-import asyncio
-import tempfile
-import zipfile
-import io
-from fastapi.responses import StreamingResponse
-
 @router.post("/comfyui/workflow/task")
 async def workflow_task(
     data_in: ComfyUITaskPublic
@@ -201,10 +196,20 @@ async def workflow_task(
     """
     查询任务{task_id}，并返回执行结果
     Args:
-    - task_id: 任务ID
+    - data_in: 包含任务ID的输入数据, 例如:
+        ```json
+        {
+            "task_id": "015fe59e-6fba-4f61-8ea3-1efdf1c18366",
+            "server_info": { // 此项可选，默认使用系统配置文件中的信息
+                "server_host": "127.0.0.1",
+                "server_port": "8188"
+            }
+        }
+        ```
+    
     
     Returns:
-    - StreamingResponse: 包含所有生成图像的 ZIP 文件
+    - StreamingResponse: 包含所有生成图像的 ZIP 文件(只会下载 class_type = SaveImage 节点生成的图像)
     
     
     """
@@ -219,27 +224,17 @@ async def workflow_task(
                 result = await comfyui_controller.get_result(prompt_id)
                 if prompt_id in result:
                     workflow_controller = WorkflowController(result)
-                    image_files = []
                     async with workflow_controller:
-                        save_images_node_id = workflow_controller.find_save_images_node_id_by_classtype("SaveImage")
-                        # 获取到保存图像的节点id是多少
-                        for image_id in save_images_node_id:
-                            logger.info(f"获取到保存图像的节点id: {image_id}")
-                            output_node = workflow_controller.find_output_images_node_by_save_images_node_id(image_id)
-                            # {'images': [{'filename': 'ComfyUI_00323_.png', 'subfolder': '', 'type': 'output'}]}
-                            logger.info(f"获取到图像保存结果节点信息: {output_node}")
-                            for image_info in output_node.get('images', []):
-                                image_files.append(image_info['filename'])
+                        image_files = await workflow_controller.extract_image_files()
+                        logger.info(f"待保存图像文件列表: {image_files}")
 
-                logger.info(f"待保存图像文件列表: {image_files}")
-
-                # 下载指定文件名的图片
-                output_images = await comfyui_controller.download_images_as_stream(image_files)
-                if not output_images:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="未找到输出图片"
-                )
+                        # 下载指定文件名的图片
+                        output_images = await comfyui_controller.download_images_as_stream(image_files)
+                        if not output_images:
+                            raise HTTPException(
+                                status_code=404,
+                                detail="未找到输出图片"
+                            )
                 
                 zip_data = await create_images_zip(output_images)
                 

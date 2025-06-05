@@ -90,6 +90,22 @@ class WorkflowController:
         # # 默认行为
         # return self.find_nodes_by_class(class_type)
 
+    async def extract_image_files(self) -> List[str]:
+        """提取工作流中所有输出图像文件名
+        
+        Returns:
+            List[str]: 图像文件名列表
+        """
+        image_files = []
+        save_images_node_id = self.find_save_images_node_id_by_classtype("SaveImage")
+        for image_id in save_images_node_id:
+            logger.info(f"获取到保存图像的节点id: {image_id}")
+            output_node = self.find_output_images_node_by_save_images_node_id(image_id)
+            logger.info(f"获取到图像保存结果节点信息: {output_node}")
+            for image_info in output_node.get('images', []):
+                image_files.append(image_info['filename'])
+        return image_files
+    
     def find_output_images_node_by_save_images_node_id(self, save_image_id: str):
         """根据保存图片ID查找输出图片节点"""
         outputs_section = None
