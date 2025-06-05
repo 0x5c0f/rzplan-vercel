@@ -244,31 +244,31 @@ class ComfyUIController:
                 f"获取执行结果时发生意外错误: {str(e)}"
             ) from e
 
-    async def download_images(self, output_data, output_dir="output"):
-        """下载输出图片"""
-        os.makedirs(output_dir, exist_ok=True)
-        logger.info(f"下载目录: {os.path.abspath(output_dir)}")
+    # async def download_images(self, output_data, output_dir="output"):
+    #     """下载输出图片"""
+    #     os.makedirs(output_dir, exist_ok=True)
+    #     logger.info(f"下载目录: {os.path.abspath(output_dir)}")
 
-        tasks = []
-        for node_id, node_output in output_data.items():
-            images = node_output.get("images", [])
-            for image in images:
-                filename = image["filename"]
-                subfolder = image["subfolder"]
+    #     tasks = []
+    #     for node_id, node_output in output_data.items():
+    #         images = node_output.get("images", [])
+    #         for image in images:
+    #             filename = image["filename"]
+    #             subfolder = image["subfolder"]
 
-                # 路径安全检查
-                if ".." in filename or os.path.isabs(filename):
-                    logger.warning(f"检测到非法文件名: {filename}")
-                    continue
+    #             # 路径安全检查
+    #             if ".." in filename or os.path.isabs(filename):
+    #                 logger.warning(f"检测到非法文件名: {filename}")
+    #                 continue
 
-                save_path = os.path.join(output_dir, filename)
-                url = f"http://{self.server_url}/view?filename={filename}&subfolder={subfolder}&_={int(time())}"
-                tasks.append(self._download_image(url, save_path, node_id))
+    #             save_path = os.path.join(output_dir, filename)
+    #             url = f"http://{self.server_url}/view?filename={filename}&subfolder={subfolder}&_={int(time())}"
+    #             tasks.append(self._download_image(url, save_path, node_id))
 
-        await asyncio.gather(*tasks)
+    #     await asyncio.gather(*tasks)
 
-    async def _download_image(self, url, save_path, node_id):
-        """下载单张图片"""
+    async def _download_image(self, url, filename):
+        """下载单张图片并返回文件数据"""
         try:
             headers = {
                 "Cache-Control": "no-cache",
@@ -276,12 +276,31 @@ class ComfyUIController:
             }
             resp = await self.client.get(url, headers=headers)
             resp.raise_for_status()
-            with open(save_path, "wb") as f:
-                f.write(resp.content)
-            logger.debug(f"节点 {node_id}: 下载地址: <{url}>")
-            logger.info(f"节点 {node_id}: 下载完成 {save_path} ({len(resp.content)/1024:.1f} KB)")
+            logger.debug(f"节点 {filename}: 下载地址: <{url}>")
+            logger.info(f"节点 {filename}: 下载完成 ({len(resp.content)/1024:.1f} KB)")
+            return resp.content
         except Exception as e:
-            logger.error(f"节点 {node_id}: 下载异常: {e}")
+            logger.error(f"节点 {filename}: 下载异常: {e}")
+            return None
+
+
+    async def download_images_as_stream(self, filenames):
+        """下载指定文件名的图片并返回文件对象列表
+        参数:
+            filenames: 要下载的文件名列表
+        """
+        files = []
+        for filename in filenames:
+            # 路径安全检查
+            if ".." in filename or os.path.isabs(filename):
+                logger.warning(f"检测到非法文件名: {filename}")
+                continue
+
+            url = f"http://{self.server_url}/view?filename={filename}&subfolder=&_={int(time())}"
+            file_data = await self._download_image(url, filename)
+            if file_data:
+                files.append((filename, file_data))
+        return files
 
     async def close(self):
         """关闭连接和 HTTP 客户端"""

@@ -187,6 +187,10 @@ async def workflow_queue(
         )
 
 import asyncio
+import tempfile
+import zipfile
+import io
+from fastapi.responses import StreamingResponse
 
 @router.post("/comfyui/workflow/task")
 async def workflow_task(
@@ -207,6 +211,7 @@ async def workflow_task(
                 result = await comfyui_controller.get_result(prompt_id)
                 if prompt_id in result:
                     workflow_controller = WorkflowController(result)
+                    image_files = []
                     async with workflow_controller:
                         save_images_node_id = workflow_controller.find_save_images_node_id_by_classtype("SaveImage")
                     # 获取到保存图像的节点id是多少
@@ -215,35 +220,40 @@ async def workflow_task(
                             output_node = workflow_controller.find_output_images_node_by_save_images_node_id(image_id)
                             # {'images': [{'filename': 'ComfyUI_00323_.png', 'subfolder': '', 'type': 'output'}]}
                             logger.info(f"获取到图像保存结果节点信息: {output_node}")
-                            # TODO： 传入comfyui_controller 中
+                            for image_info in output_node.get('images', []):
+                                image_files.append(image_info['filename'])
+                
+                logger.info(f"待保存图像文件列表: {image_files}")
+
+                # 下载指定文件名的图片
+                output_images = await comfyui_controller.download_images_as_stream(image_files)
+                if not output_images:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="未找到输出图片"
+                )
+                    
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                    for filename, file_data in output_images:
+                        zip_file.writestr(filename, file_data)
+                
+                # 返回zip文件
+                zip_buffer.seek(0)
+                return StreamingResponse(
+                    zip_buffer,
+                    media_type="application/zip",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=comfyui_output_{prompt_id}.zip",
+                        "Content-Length": str(zip_buffer.getbuffer().nbytes)
+                    }
+                )
+                
             except Exception as e:
                 logger.error(f"获取结果时出错: {str(e)}")
                 await asyncio.sleep(1)
-            
-            if prompt_id in result:
-                pass
-                # 获取到保存图像的节点id是多少
-
-                # await comfyui_controller
-            #     await comfyui_controller.download_images(result[prompt_id]["outputs"])
-            # await asyncio.sleep(1)
-        # # 获取结果
-        # while True:
-        #     try:
-        #         result = await comfyui_controller.get_result(prompt_id)
-        #     except Exception as e:
-        #         logger.error(f"获取结果时出错: {str(e)}")
-        #         await asyncio.sleep(1)
-        #         continue
-        #     if prompt_id in result:
-        #         await comfyui_controller.download_images(result[prompt_id]["outputs"])
-        #         break
-        #     await asyncio.sleep(1)
-        
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"{str(e)}"
         )
-    
-    return {"status": "ok"}
