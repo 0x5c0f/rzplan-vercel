@@ -85,7 +85,23 @@ async def upload_image_to_comfyui(
     comfyui_server: WorkFlowImageUploadPublic = Depends(parse_server_info),
     images: List[UploadFile] = File(),
 ) -> Dict:
-    """上传图片到comfyui input 目录，返回上传后的文件名与原文件名的对应关系"""
+    """
+    上传图片到comfyui input 目录
+    Args:
+    - server_info: comfyui 服务器信息, 例如
+        ```json
+        {
+            "server_info": { // 此项可选，默认使用系统配置文件中的信息
+                "server_host": "172.16.110.240",
+                "server_port": "8189"
+            }
+        }
+        ```    
+    - images: 上传的图片对象
+    
+    Returns:
+    - Dict: 上传后的文件名与原文件名的对应关系
+    """
     
     # 构建服务器URL
     comfyui_controller = ComfyUIController(comfyui_server.server_info.server_host, comfyui_server.server_info.server_port)

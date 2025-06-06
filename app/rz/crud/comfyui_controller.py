@@ -93,27 +93,27 @@ async def parse_workflow_data(data_in: str = Form(...)) -> WorkFlowNodePublic:
             detail=f"Validation error in data_in: {str(e)}"
         )
 
-async def parse_server_info(data_in: Optional[str] = None) -> WorkFlowImageUploadPublic:
+async def parse_server_info(server_info: Optional[str] = None) -> WorkFlowImageUploadPublic:
     """
     解析服务器信息的依赖项函数
     
-    当 data_in 为 None 时返回默认配置
+    当 server_info 为 None 时返回默认配置
     """
-    if data_in is None:
+    if server_info is None:
         return WorkFlowImageUploadPublic()
         
     try:
         # 解析 JSON 字符串
-        data_dict = json.loads(data_in)
+        data_dict = json.loads(server_info)
         # 直接使用构造函数，这在 v1 和 v2 中都有效
         return WorkFlowImageUploadPublic(**data_dict)
     except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=400, 
-            detail=f"Invalid JSON format in data_in: {str(e)}"
+            detail=f"Invalid JSON format in server_info: {str(e)}"
         )
     except (ValidationError, TypeError) as e:
         raise HTTPException(
             status_code=400, 
-            detail=f"Validation error in data_in: {str(e)}"
+            detail=f"Validation error in server_info: {str(e)}"
         )
