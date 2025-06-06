@@ -92,8 +92,8 @@ async def upload_image_to_comfyui(
         ```json
         {
             "server_info": { // 此项可选，默认使用系统配置文件中的信息
-                "server_host": "172.16.110.240",
-                "server_port": "8189"
+                "server_host": "127.0.0.1",
+                "server_port": "8188"
             }
         }
         ```    
@@ -139,8 +139,8 @@ async def workflow_queue(
       ```json
         {
             "server_info": { // 此项可选，默认使用系统配置文件中的信息
-                "server_host": "172.16.110.240",
-                "server_port": "8189"
+                "server_host": "127.0.0.1",
+                "server_port": "8188"
             },
             "node_info": [
                 {
@@ -179,19 +179,6 @@ async def workflow_queue(
                     "messgae": "任务提交成功",
                     "task_id": f"{prompt_id}"
                 }
-                
-                # # 获取结果
-                # while True:
-                #     try:
-                #         result = await comfyui_controller.get_result(prompt_id)
-                #     except Exception as e:
-                #         logger.error(f"获取结果时出错: {str(e)}")
-                #         await asyncio.sleep(1)
-                #         continue
-                #     if prompt_id in result:
-                #         await comfyui_controller.download_images(result[prompt_id]["outputs"])
-                #         break
-                #     await asyncio.sleep(1)
                 
             except Exception as e:
                 logger.error(f"ComfyUI操作失败: {str(e)}")
