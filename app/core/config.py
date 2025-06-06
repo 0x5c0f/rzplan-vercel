@@ -124,6 +124,10 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "[%(asctime)s] - %(levelname)s - %(message)s"
-
+    
+    COMFYUI_SERVER_PORT: int = 8188
+    COMFYUI_SERVER_HOST: str = "127.0.0.1"
+    COMFYUI_CACHE_DIR: str = "/tmp/comfyui"
+    
 
 settings = Settings()  # type: ignore

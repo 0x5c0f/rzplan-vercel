@@ -14,6 +14,11 @@ from alibabacloud_tea_util import models as util_models
 from app.rz.models.notification import AliyunSMSData
 from app.rz.models.tagcloud import TagCloudPublic
 
+import tempfile
+import zipfile
+import io
+from typing import List, Tuple
+
 def performance_data_metrics():
     registry = CollectorRegistry()
     metrics = {
@@ -217,3 +222,15 @@ async def tagcloud_generator(
     plt.close()
     
     return file_path
+
+async def create_images_zip(data: List[Tuple[str, bytes]]) -> bytes:
+    """创建图像文件的 ZIP 压缩包"""
+    if not data:
+        raise ValueError("没有图像数据可压缩")
+    
+    with io.BytesIO() as zip_buffer:
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for filename, file_data in data:
+                if file_data:  # 确保文件数据不为空
+                    zip_file.writestr(filename, file_data)
+        return zip_buffer.getvalue()
