@@ -3,27 +3,20 @@ stages:
   - deploy
 
 before_script:
-  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY" 
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
 
 docker-build:
-  # image: docker/compose:latest
   image: hub.osell.com/base/docker-compose
   stage: build
   script:
     - docker-compose -f docker-compose-build.yml build
   rules:
-    - if: $CI_COMMIT_BRANCH == "release"
-      exists:
-        - docker-compose-build.yml
-    
+    - if: '$CI_COMMIT_BRANCH == "release" && -f "docker-compose-build.yml"'
+
 docker-push:
   image: hub.osell.com/base/docker-compose
   stage: deploy
   script:
     - docker-compose -f docker-compose-build.yml push
-    # - |
-    #   _TIME="$(date +'%Y%m%d%H')"
-    #   for _tag in $(grep image docker-compose-build.yml |awk '{print $2}'); do 
-    #     docker tag $_tag ${_tag/latest/${_TIME}}
-    #     docker push ${_tag/latest/${_TIME}}
-    #   done
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "release" && -f "docker-compose-build.yml"'
