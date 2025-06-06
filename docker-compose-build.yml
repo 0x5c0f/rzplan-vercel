@@ -5,4 +5,4 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: hub.osell.com/app/rzplan-backend
+    image: hub.0x5c0f.cc/app/rzplan-backend
