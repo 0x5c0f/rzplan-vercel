@@ -288,6 +288,8 @@ class ComfyUIController:
         """下载指定文件名的图片并返回文件对象列表
         参数:
             filenames: 要下载的文件名列表
+        返回:
+            文件对象列表
         """
         files = []
         for filename in filenames:

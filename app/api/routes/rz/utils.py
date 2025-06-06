@@ -192,7 +192,7 @@ async def workflow_queue(
 @router.post("/comfyui/workflow/task")
 async def workflow_task(
     data_in: ComfyUITaskPublic
-) -> StreamingResponse:
+):
     """
     查询任务{task_id}，并返回执行结果
     Args:
@@ -210,8 +210,7 @@ async def workflow_task(
     
     Returns:
     - StreamingResponse: 包含所有生成图像的 ZIP 文件(只会下载 class_type = SaveImage 节点生成的图像)
-    
-    
+    - HTTPException: 如果发生错误，将返回 HTTPException
     """
     
     comfyui_controller = ComfyUIController(data_in.server_info.server_host, data_in.server_info.server_port)
@@ -220,22 +219,27 @@ async def workflow_task(
 
     try:
         async with comfyui_controller:
-            try:
-                result = await comfyui_controller.get_result(prompt_id)
-                if prompt_id in result:
-                    workflow_controller = WorkflowController(result)
-                    async with workflow_controller:
-                        image_files = await workflow_controller.extract_image_files()
-                        logger.info(f"待保存图像文件列表: {image_files}")
+            result = await comfyui_controller.get_result(prompt_id)
+            if not result:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"任务 {prompt_id} 的结果为空，可能尚未完成或不存在"
+                )
+            
+            if prompt_id in result:
+                workflow_controller = WorkflowController(result)
+                async with workflow_controller:
+                    image_files = await workflow_controller.extract_image_files()
+                    logger.info(f"待保存图像文件列表: {image_files}")
 
-                        # 下载指定文件名的图片
-                        output_images = await comfyui_controller.download_images_as_stream(image_files)
-                        if not output_images:
-                            raise HTTPException(
-                                status_code=404,
-                                detail="未找到输出图片"
-                            )
-                
+                    # 下载指定文件名的图片
+                    output_images = await comfyui_controller.download_images_as_stream(image_files)
+                    if not output_images:
+                        raise HTTPException(
+                            status_code=404,
+                            detail="没有查询到任务结果，该任务可能未完成，请稍后在查询"
+                        )
+            
                 zip_data = await create_images_zip(output_images)
                 
                 # 返回zip文件
@@ -248,10 +252,11 @@ async def workflow_task(
                         "Content-Type": "application/zip"
                     }
                 )
-
-            except Exception as e:
-                logger.error(f"获取结果时出错: {str(e)}")
-                await asyncio.sleep(1)
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail="没有查询到任务结果，该任务可能未完成，请稍后在查询"
+                )
     except Exception as e:
         raise HTTPException(
             status_code=500,
