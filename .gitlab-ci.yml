@@ -1,17 +1,12 @@
-stages:
-  - build
-  - deploy
-
-before_script:
-  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-
 docker-build:
   image: hub.osell.com/base/docker-compose
   stage: build
   script:
     - docker-compose -f docker-compose-build.yml build
   rules:
-    - if: '$CI_COMMIT_BRANCH == "release" && -f "docker-compose-build.yml"'
+    - exists:
+        - docker-compose-build.yml
+    - if: '$CI_COMMIT_BRANCH == "release"'
 
 docker-push:
   image: hub.osell.com/base/docker-compose
@@ -19,4 +14,6 @@ docker-push:
   script:
     - docker-compose -f docker-compose-build.yml push
   rules:
-    - if: '$CI_COMMIT_BRANCH == "release" && -f "docker-compose-build.yml"'
+    - exists:
+        - docker-compose-build.yml
+    - if: '$CI_COMMIT_BRANCH == "release"'
