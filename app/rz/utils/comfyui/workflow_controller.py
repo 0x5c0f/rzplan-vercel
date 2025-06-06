@@ -1,6 +1,6 @@
 import json
 from typing import Any, Dict, Optional, List, Union
-from fastapi import UploadFile
+from starlette.datastructures import UploadFile
 
 from app.rz.models.comfyui_workflow import WorkFlowNodeInputs
 from app.rz.utils.logger import logger
