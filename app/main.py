@@ -33,3 +33,6 @@ if settings.all_cors_origins:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+from app.rz.subsystem.main import register_mcp_server
+register_mcp_server(app)  # Register the MCP server with the FastAPI app

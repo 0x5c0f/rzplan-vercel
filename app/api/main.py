@@ -22,3 +22,6 @@ api_router.include_router(performance_data.router)
 api_router.include_router(utils.router)
 
 api_router.include_router(dify_chat_log.router)
+
+from app.rz.subsystem.mcp import main
+api_router.include_router(main.router)

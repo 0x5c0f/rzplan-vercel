@@ -35,3 +35,6 @@ matplotlib==3.10.1
 # comfyui api
 httpx==0.28.1
 websockets==14.1
+
+# fastapi-mcp
+fastapi-mcp>=0.3.4
