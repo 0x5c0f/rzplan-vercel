@@ -14,16 +14,17 @@ bcrypt==4.0.1
 pydantic-settings>=2.2.1,<3.0.0
 sentry-sdk[fastapi]>=1.40.6,<2.0.0
 pyjwt>=2.8.0,<3.0.0
+
+# # Development dependencies
+# pytest>=7.4.3,<8.0.0
+# mypy>=1.8.0,<2.0.0
+# ruff>=0.2.2,<1.0.0
+# pre-commit>=3.6.2,<4.0.0
+# types-passlib>=1.7.7.20240106,<2.0.0.0
+# coverage>=7.4.3,<8.0.0
+
+
 prometheus_client==0.21.0
-
-
-# Development dependencies
-pytest>=7.4.3,<8.0.0
-mypy>=1.8.0,<2.0.0
-ruff>=0.2.2,<1.0.0
-pre-commit>=3.6.2,<4.0.0
-types-passlib>=1.7.7.20240106,<2.0.0.0
-coverage>=7.4.3,<8.0.0
 
 # aliyun sdk
 alibabacloud_dysmsapi20170525==3.1.0
@@ -33,8 +34,7 @@ wordcloud==1.9.4
 matplotlib==3.10.1
 
 # comfyui api
-httpx==0.28.1
 websockets==14.1
 
 # fastapi-mcp
-fastapi-mcp>=0.3.4
+fastapi-mcp==0.4.0

@@ -14,7 +14,7 @@ def register_mcp_server(app: FastAPI):
         include_operations=["list_mcp_operations"],
     )
 
-    mcp.mount(mount_path="/mcp/info")
+    mcp.mount_http(mount_path="/mcp/info")
     
     # all = FastApiMCP(
     #     app,
@@ -22,4 +22,4 @@ def register_mcp_server(app: FastAPI):
     #     description=f"MCP server for the {settings.PROJECT_NAME} API",
     # )
     
-    # all.mount(mount_path="/mcp/all")
+    # all.mount_http(mount_path="/mcp/all")
