@@ -12,6 +12,8 @@ from typing import List, Dict
 
 from app.rz.utils.utils import create_images_zip
 
+from app.rz.utils.logger import logger
+
 router = APIRouter(prefix="/utils", tags=["utils"])
 
 
