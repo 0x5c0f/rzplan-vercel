@@ -18,12 +18,18 @@ from app.api.routes.rz import (
     performance_data,
     performance_tracking_config,
     dify_chat_log,
-    utils,
 )
 
 api_router.include_router(performance_tracking_config.router)
 api_router.include_router(performance_data.router)
 
-api_router.include_router(utils.router)
-
 api_router.include_router(dify_chat_log.router)
+
+
+from app.api.routes.rz.utils import (
+    common_utils,
+    comfyui_utils
+)
+
+api_router.include_router(common_utils.router)
+api_router.include_router(comfyui_utils.router)
