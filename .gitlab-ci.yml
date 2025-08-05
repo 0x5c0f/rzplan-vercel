@@ -3,24 +3,25 @@ stages:
   - deploy
 
 before_script:
-  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY" 
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  # - docker login -u "$ALIYUN_REGISTRY_USER" -p "$ALIYUN_REGISTRY_PASSWORD" "registry.cn-hangzhou.aliyuncs.com"
 
 docker-build:
-  image: hub.osell.com/base/docker-compose
+  image: docker/compose
   stage: build
   script:
     - docker-compose -f docker-compose-build.yml build
   rules:
-    - if: $CI_COMMIT_BRANCH == "release"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       exists:
         - docker-compose-build.yml
-    
-docker-push:
-  image: hub.osell.com/base/docker-compose
+
+docker-push-and-cleanup:
+  image: docker/compose
   stage: deploy
   script:
+    - echo "Pushing Docker images..."
     - docker-compose -f docker-compose-build.yml push
+  
   rules:
-    - if: $CI_COMMIT_BRANCH == "release"
-      exists:
-        - docker-compose-build.yml
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

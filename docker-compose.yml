@@ -1,8 +1,8 @@
 # Use postgres/example user/password credentials
-version: '3.9'
+
 services:
   db:
-    image: registry.cn-chengdu.aliyuncs.com/osell/postgres:12.20-bookworm
+    image: postgres:12.20-bookworm
     restart: always
     shm_size: 128mb
     ports:
@@ -17,7 +17,7 @@ services:
       - .env
 
   app:
-    image: hub.0x5c0f.cc/app/rzplan-backend:latest
+    image: 0x5c0f/rzplan-backend:latest
     restart: always
     ports:
       - "8000:8000"
