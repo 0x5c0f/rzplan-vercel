@@ -38,3 +38,6 @@ websockets==14.1
 
 # fastapi-mcp
 fastapi-mcp==0.4.0
+
+# show website ip
+dnspython==2.7.0

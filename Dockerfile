@@ -1,4 +1,4 @@
-FROM registry.cn-chengdu.aliyuncs.com/osell/python:3.11-slim-bullseye
+FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 

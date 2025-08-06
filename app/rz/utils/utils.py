@@ -1,10 +1,15 @@
+import tempfile, zipfile
+import random, string, json, os, io, uuid
+import dns.resolver, httpx
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as font_manager
+
 from prometheus_client import Gauge, CollectorRegistry
-
 from jinja2 import Template
-
-import random
-import string
-import json
+from typing import List, Tuple, Dict
+from wordcloud import WordCloud
+from functools import lru_cache
+from pathlib import Path
 
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_dysmsapi20170525.client import Client as Dysmsapi20170525Client
@@ -13,11 +18,6 @@ from alibabacloud_tea_util import models as util_models
 
 from app.rz.models.notification import AliyunSMSData
 from app.rz.models.tagcloud import TagCloudPublic
-
-import tempfile
-import zipfile
-import io
-from typing import List, Tuple
 
 def performance_data_metrics():
     registry = CollectorRegistry()
@@ -91,9 +91,13 @@ def generate_random_string(length=12) -> str:
     letters = string.ascii_letters + string.digits
     return ''.join(random.choice(letters) for _ in range(length))
 
-def generate_pcheck_js_file(filepath: str, **context) -> str:
+
+def generate_static_file(filepath: str, **context) -> str:
     """
-        加载并生成 pcheck.js 文件
+        通过 Jinja2 模板渲染生成静态文件内容
+        - filepath: 模板文件路径
+        - context: 模板渲染上下文
+        - Returns: 渲染后的内容字符串
     """
     with open(filepath, "r", encoding="utf-8") as file:
         content = file.read()
@@ -125,16 +129,6 @@ async def aliyun_sms_send(AliyunSMSData: AliyunSMSData) -> dysmsapi_20170525_mod
     runtime = util_models.RuntimeOptions()
     return client.send_sms_with_options(send_sms_request, runtime)
 
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-import os
-import tempfile
-from typing import Dict
-import matplotlib.font_manager as font_manager
-from functools import lru_cache
-from pathlib import Path
-
-
 @lru_cache(maxsize=None)
 def _get_system_fonts_list() -> list:
     """
@@ -157,38 +151,47 @@ def _get_local_fonts_dict(font_exts: tuple = ('.ttf', '.otf', '.ttc')) -> dict:
 
 def get_font_path(font_name: str) -> str:
     """
-    根据传入的字体名称或路径，返回一个可用的字体文件路径。
-    如果 font_name 是一个存在的文件路径，则直接返回；
-    如果是字体名称，优先在 assets/fonts 目录中查找对应的字体文件，找不到时，
-    在系统中查找对应的字体文件。如果系统中也找不到，则返回第一个系统默认字体。
+    根据字体名称或路径返回可用字体文件路径，查找顺序：
+    1. 直接路径检查
+    2. 本地assets/fonts目录
+    3. 系统字体目录
+    返回匹配的字体路径或第一个系统字体
+    
+    Args:
+        font_name: 字体名称或路径
+        
+    Returns:
+        字体文件完整路径
+        
+    Raises:
+        ValueError: 找不到字体且无系统默认字体
     """
-
-    # 如果传入的是一个路径, 存在文件则直接返回
-    if os.path.exists(font_name):
-        return font_name
+    # 如果是有效路径直接返回
+    font_path = Path(font_name)
+    if font_path.is_file():
+        return str(font_path)
     
+    font_name_lower = font_name.lower()
     FONT_EXTS = ('.ttf', '.otf', '.ttc')
+    
+    # 1. 检查本地字体
     local_fonts = _get_local_fonts_dict(FONT_EXTS)
-
-    local_path = Path(font_name)
+    if font_name_lower in local_fonts:
+        return local_fonts[font_name_lower]
     
-    if local_path.stem.lower() in local_fonts:
-        return local_fonts[local_path.stem.lower()]
-    
+    # 2. 检查系统字体
     system_fonts = _get_system_fonts_list()
-    matched_font = None
-    # 匹配时忽略大小写，检查字体名称是否在系统字体文件名中出现
-    for font_file in system_fonts:
-        sys_font_file = Path(font_file)
-        if font_name.lower() in sys_font_file.stem.lower():
-            matched_font = font_file
-            break
-    if matched_font:
-        return matched_font
-    elif system_fonts:
+    for font_path in system_fonts:
+        font_stem = Path(font_path).stem.lower()
+        # 精确匹配字体名称
+        if font_name_lower == font_stem:
+            return font_path
+    
+    # 3. 返回第一个系统字体或报错
+    if system_fonts:
         return system_fonts[0]
-    else:
-        raise ValueError("指定的字体不存在且无法找到系统默认字体")
+        
+    raise ValueError(f"字体'{font_name}'未找到且无系统默认字体")
 
 async def tagcloud_generator(
     tag_data: TagCloudPublic
@@ -234,3 +237,33 @@ async def create_images_zip(data: List[Tuple[str, bytes]]) -> bytes:
                 if file_data:  # 确保文件数据不为空
                     zip_file.writestr(filename, file_data)
         return zip_buffer.getvalue()
+
+def dns_lookup(domain: str, record_type: str, dns_server: str, timeout: float = 3.0) -> list[str]:
+    resolver = dns.resolver.Resolver()
+    resolver.nameservers = [dns_server]
+    resolver.timeout = timeout
+    resolver.lifetime = timeout
+    try:
+        answers = resolver.resolve(domain, record_type)
+        return [answer.to_text() for answer in answers]
+    except (dns.resolver.NXDOMAIN, dns.resolver.Timeout, dns.resolver.NoAnswer, dns.resolver.NoNameservers) as e:
+        return []
+    
+async def fetch_ipinfo(ip: str, timeout: float = 3.0) -> dict:
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            response = await client.get(f"https://ipinfo.io/{ip}/json")
+            if response.status_code == 200:
+                data = response.json()
+                data["ip"] = ip
+                return data
+        except httpx.RequestError as e:
+            return {"ip": ip, "error": str(e)}
+    return {"ip": ip, "error": "Failed to fetch IPInfo"}
+
+def is_valid_uuid(val):
+    try:
+        uuid.UUID(str(val))
+        return True
+    except ValueError:
+        return False
