@@ -35,3 +35,6 @@ matplotlib==3.10.1
 # comfyui api
 httpx==0.28.1
 websockets==14.1
+
+# show website ip
+dnspython==2.7.0

@@ -16,7 +16,7 @@ from app.rz.models.performance_data import (
 )
 from app.rz.crud import performance_tracking_config as config_crud
 
-from app.rz.utils.utils import performance_data_metrics, generate_pcheck_js_file
+from app.rz.utils.utils import performance_data_metrics, generate_static_file
 
 from app.core.config import settings
 
@@ -36,7 +36,7 @@ def view_pcheckjs():
     """
     filepath = "app/rz/templates/pcheck.js"
     
-    rendered_content = generate_pcheck_js_file(
+    rendered_content = generate_static_file(
         filepath, 
         DOMAIN=settings.DOMAIN, 
         ENABLELOG=str(settings.LOG_LEVEL == 'DEBUG').lower(), 
