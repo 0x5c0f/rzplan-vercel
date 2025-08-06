@@ -11,7 +11,7 @@ def register_mcp_server(app: FastAPI):
         app,
         name=f"{settings.PROJECT_NAME} API MCP",
         description=f"MCP server for the {settings.PROJECT_NAME} API",
-        include_operations=["list_mcp_operations"],
+        include_operations=["list_mcp_operations", "resolve_domain"],
     )
 
     mcp.mount_http(mount_path="/mcp/info")
