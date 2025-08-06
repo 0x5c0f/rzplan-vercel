@@ -2,7 +2,7 @@ name: Docker
 
 on:
   push:
-    branches: [ "release" ]
+    branches: [ "release", "development" ]
 
 env:
   REGISTRY: docker.io
@@ -34,7 +34,9 @@ jobs:
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
+          tags: |
+            type=raw,value={{branch}}
+          
       - name: Build and push Docker image
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
