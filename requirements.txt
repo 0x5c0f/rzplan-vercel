@@ -15,6 +15,9 @@ pydantic-settings>=2.2.1,<3.0.0
 sentry-sdk[fastapi]>=1.40.6,<2.0.0
 pyjwt>=2.8.0,<3.0.0
 
+# fix: vercel部署兼容
+fastapi-cli>=0.0.7
+
 # # Development dependencies
 # pytest>=7.4.3,<8.0.0
 # mypy>=1.8.0,<2.0.0
