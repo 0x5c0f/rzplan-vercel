@@ -1,9 +1,8 @@
 // ==UserScript==
-// @name         显示网站ip和ISP信息
+// @name         显示网站 IP 和 ISP 信息
 // @namespace    https://{{ DOMAIN }}/
-// @version      1.3
-// @description  在一个浮动的可拖动面板中显示当前网站的解析IP地址和ISP信息，并提供DNS输入框。
-// @description  当前脚本由 ChatGpt 生成
+// @version      1.5.0
+// @description  显示当前网站的 IP、ISP 信息，支持自定义 DNS 查询并可拖动窗口。当前脚本由 ChatGpt 生成
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
@@ -11,148 +10,146 @@
 // @connect      {{ DOMAIN }}
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
-    let dnsServer = GM_getValue('dnsServer', '8.8.8.8');
-    const apiURL = '//{{ DOMAIN }}{{ API_V1_STR }}/utils/resolve';
+    const API_BASE = '//{{ DOMAIN }}{{ API_V1_STR }}/utils/resolve';
+    const DEFAULT_DNS = '8.8.8.8';
+    const STORAGE_KEYS = {
+        LEFT: 'panel_left',
+        TOP: 'panel_top',
+        DNS: 'dns_server',
+    };
+
+    const domain = location.hostname;
+
+    function getStoredDNS() {
+        return GM_getValue(STORAGE_KEYS.DNS, DEFAULT_DNS);
+    }
+
+    function savePosition(left, top) {
+        GM_setValue(STORAGE_KEYS.LEFT, left + 'px');
+        GM_setValue(STORAGE_KEYS.TOP, top + 'px');
+    }
 
     function createPanel() {
         const panel = document.createElement('div');
         panel.id = 'ip-info-panel';
         panel.style.position = 'fixed';
-        panel.style.left = GM_getValue('panelLeft', 'auto');
-        panel.style.top = GM_getValue('panelTop', 'auto');
-        panel.style.right = GM_getValue('panelRight', '10px');
-        panel.style.bottom = GM_getValue('panelBottom', '10px');
-        panel.style.background = 'rgba(0, 0, 0, 0.5)';
+        panel.style.zIndex = '9999999';
+        panel.style.background = 'rgba(0,0,0,0.5)';
         panel.style.color = 'white';
         panel.style.padding = '10px';
         panel.style.borderRadius = '8px';
-        panel.style.zIndex = '99999';
         panel.style.fontSize = '14px';
         panel.style.maxWidth = '300px';
+        panel.style.maxHeight = '60vh';
+        panel.style.overflowY = 'auto';
         panel.style.cursor = 'move';
-        panel.innerHTML = '正在获取 IP 信息...';
+        panel.style.userSelect = 'none';
+
+        const left = GM_getValue(STORAGE_KEYS.LEFT, '10px');
+        const top = GM_getValue(STORAGE_KEYS.TOP, '10px');
+        panel.style.left = left;
+        panel.style.top = top;
+
         document.body.appendChild(panel);
-
-        addDnsInput(panel);
-
-        // 拖动功能
-        let isDragging = false, offsetX, offsetY;
-
-        panel.addEventListener('mousedown', function(e) {
-            if (e.target.tagName.toLowerCase() === 'input') return; // 输入框不拖动
-            isDragging = true;
-            offsetX = e.clientX - panel.offsetLeft;
-            offsetY = e.clientY - panel.offsetTop;
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (isDragging) {
-                panel.style.left = (e.clientX - offsetX) + 'px';
-                panel.style.top = (e.clientY - offsetY) + 'px';
-                panel.style.right = 'auto';
-                panel.style.bottom = 'auto';
-            }
-        });
-
-        document.addEventListener('mouseup', function() {
-            if (isDragging) {
-                GM_setValue('panelLeft', panel.style.left);
-                GM_setValue('panelTop', panel.style.top);
-                GM_setValue('panelRight', 'auto');
-                GM_setValue('panelBottom', 'auto');
-            }
-            isDragging = false;
-        });
-
-        // 点击展开/收起
-        panel.addEventListener('click', (e) => {
-    if (e.target.tagName.toLowerCase() === 'input') return; // 输入框不触发展开
-    const detail = document.getElementById('ip-info-detail');
-    const toggleText = panel.querySelector('em');
-    if (detail) {
-        if (detail.style.display === 'none') {
-            detail.style.display = 'block';
-            if (toggleText) toggleText.textContent = '(点击关闭详情)';
-        } else {
-            detail.style.display = 'none';
-            if (toggleText) toggleText.textContent = '(点击展开详情)';
-        }
-    }
-});
+        enableDrag(panel);
+        return panel;
     }
 
-    function addDnsInput(panel) {
-        const dnsInput = document.createElement('input');
-        dnsInput.type = 'text';
-        dnsInput.placeholder = 'DNS 服务器 (默认8.8.8.8)';
-        dnsInput.style.width = '100%';
-        dnsInput.style.marginTop = '8px';
-        dnsInput.style.padding = '4px 0';
-        dnsInput.style.border = 'none';
-        dnsInput.style.borderBottom = '1px solid white';
-        dnsInput.style.background = 'transparent';
-        dnsInput.style.color = 'white';
-        dnsInput.style.outline = 'none';
-        dnsInput.style.boxSizing = 'border-box';
-        dnsInput.value = dnsServer;
-        panel.appendChild(dnsInput);
+    function enableDrag(el) {
+        let offsetX = 0, offsetY = 0, dragging = false;
 
-        dnsInput.addEventListener('change', () => {
-            dnsServer = dnsInput.value || '8.8.8.8';
-            GM_setValue('dnsServer', dnsServer);
-            fetchIPInfo();
+        el.addEventListener('mousedown', e => {
+            if (e.target.tagName === 'INPUT') return;
+            dragging = true;
+            offsetX = e.clientX - el.offsetLeft;
+            offsetY = e.clientY - el.offsetTop;
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            el.style.left = `${e.clientX - offsetX}px`;
+            el.style.top = `${e.clientY - offsetY}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            savePosition(el.offsetLeft, el.offsetTop);
         });
     }
 
-    function updatePanel(data) {
-        const panel = document.getElementById('ip-info-panel');
-        if (!panel) return;
+    function fetchIPInfo(dnsServer, callback) {
+        const url = `${API_BASE}?domain=${domain}&dns_server=${encodeURIComponent(dnsServer)}&show_ipinfo=false`;
 
-        let content = `<strong>${data.domain}</strong><br>`;
-        content += `DNS: ${data.dns_server}<br>`;
-        content += `IPv4: ${data.ipv4_addresses.length} | IPv6: ${data.ipv6_addresses.length}<br>`;
-        content += `<em>(点击展开详情)</em>`;
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url,
+            onload: (res) => {
+                try {
+                    const data = JSON.parse(res.responseText);
+                    callback(null, data);
+                } catch (err) {
+                    callback(err);
+                }
+            },
+            onerror: (err) => callback(err)
+        });
+    }
 
-        let detailHTML = '<div id="ip-info-detail" style="display:none; margin-top:8px;">';
+    function renderPanel(panel, data, dnsServer) {
+        let html = `<strong>${data.domain}</strong><br>`;
+        html += `DNS: ${dnsServer}<br>`;
+        html += `IPv4: ${data.ipv4_addresses.length} | IPv6: ${data.ipv6_addresses.length}<br>`;
+        html += `<em id="toggle-detail" style="cursor:pointer;">(点击展开详情)</em>`;
+
+        let detailHTML = '<div id="ip-info-detail" style="display:none; margin-top:8px; line-height:1.5; padding:6px; border-top:1px solid #ccc; background-color: rgba(255,255,255,0.05); word-break: break-all;">';
+        data.ipv4_addresses.forEach(ip => {
+            detailHTML += `<div><strong>IPv4</strong>: ${ip}</div>`;
+        });
+        data.ipv6_addresses.forEach(ip => {
+            detailHTML += `<div><strong>IPv6</strong>: ${ip}</div>`;
+        });
         data.ipinfo.forEach(info => {
-            detailHTML += `<div style="margin-bottom:5px;">`;
-            detailHTML += `<div>IP: ${info.ip}</div>`;
-            if (info.org) detailHTML += `<div>ISP: ${info.org}</div>`;
-            if (info.country) detailHTML += `<div>国家: ${info.country}</div>`;
+            detailHTML += `<div style="margin-top:6px; padding:4px 0; border-bottom:1px solid #666;">`;
+            detailHTML += `<div><strong>IP</strong>: ${info.ip}</div>`;
+            if (info.org) detailHTML += `<div><strong>ISP</strong>: ${info.org}</div>`;
+            if (info.country) detailHTML += `<div><strong>国家</strong>: ${info.country}</div>`;
             detailHTML += `</div>`;
         });
         detailHTML += '</div>';
 
-        panel.innerHTML = content + detailHTML;
+        html += detailHTML;
+        html += `<input id="dns-input" type="text" placeholder="DNS 服务器 (默认 8.8.8.8)" value="${dnsServer}" style="width:100%;margin-top:8px;padding:4px;border:none;border-bottom:1px solid white;background:transparent;color:white;outline:none;box-sizing:border-box;">`;
 
-        addDnsInput(panel);
-    }
+        panel.innerHTML = html;
 
-    function fetchIPInfo() {
-        const hostname = window.location.hostname;
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: `${apiURL}?domain=${hostname}&dns_server=${dnsServer}&show_ipinfo=false`,
-            onload: function(response) {
-                try {
-                    const data = JSON.parse(response.responseText);
-                    updatePanel(data);
-                } catch (e) {
-                    console.error('解析IP信息失败:', e);
-                }
-            },
-            onerror: function() {
-                console.error('请求IP信息失败');
-            }
+        document.getElementById('dns-input').addEventListener('change', e => {
+            const newDns = e.target.value || DEFAULT_DNS;
+            GM_setValue(STORAGE_KEYS.DNS, newDns);
+            fetchIPInfo(newDns, (err, newData) => {
+                if (!err) renderPanel(panel, newData, newDns);
+            });
+        });
+
+        document.getElementById('toggle-detail').addEventListener('click', () => {
+            const detail = document.getElementById('ip-info-detail');
+            const toggle = document.getElementById('toggle-detail');
+            const showing = detail.style.display !== 'none';
+            detail.style.display = showing ? 'none' : 'block';
+            toggle.textContent = showing ? '(点击展开详情)' : '(点击关闭详情)';
         });
     }
 
-    // 执行
-    createPanel();
-    fetchIPInfo();
-
+    const panel = createPanel();
+    const storedDNS = getStoredDNS();
+    fetchIPInfo(storedDNS, (err, data) => {
+        if (err || !data) {
+            panel.innerHTML = '<strong>获取 IP 信息失败</strong>';
+            return;
+        }
+        renderPanel(panel, data, storedDNS);
+    });
 })();
