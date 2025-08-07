@@ -1,5 +1,7 @@
 from fastapi import APIRouter
 
+from app.core.config import settings
+
 router = APIRouter(prefix="/mcp", tags=["mcp_tools"])
 
 @router.get("/list",operation_id="list_mcp_operations", summary="查询当前 MCP 可用的接口")
@@ -11,7 +13,7 @@ async def list_mcp_operations():
     ```json
     [
         {
-            "url": "/mcp/info",                                     # 接口地址
+            "url": "<mcp_path>",                                    # 接口地址
             "tools": [                                              # 可用的工具列表
                 {
                     "name": "list_mcp",                             # 工具名称
@@ -24,11 +26,11 @@ async def list_mcp_operations():
     """
     result = []
     utils = {
-        "url": "/mcp/list",
+        "url": f"{settings.API_V1_STR}/mcp/http",
         "tools": [
             {
                 "name": "list_mcp",
-                "description": "查询当前 MCP 可用的接口有哪些.",
+                "description": "查询当前 MCP 工具可用的有哪些.",
             },
             {
                 "name": "resolve_domain",
