@@ -32,10 +32,6 @@ prometheus_client==0.21.0
 # aliyun sdk
 alibabacloud_dysmsapi20170525==3.1.0
 
-# tag cloud 
-wordcloud==1.9.4
-matplotlib==3.10.1
-
 # comfyui api
 websockets==14.1
 
