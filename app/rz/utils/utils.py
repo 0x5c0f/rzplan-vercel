@@ -7,7 +7,6 @@ import matplotlib.font_manager as font_manager
 from prometheus_client import Gauge, CollectorRegistry
 from jinja2 import Template
 from typing import List, Tuple, Dict
-from wordcloud import WordCloud
 from functools import lru_cache
 from pathlib import Path
 
@@ -17,7 +16,6 @@ from alibabacloud_dysmsapi20170525 import models as dysmsapi_20170525_models
 from alibabacloud_tea_util import models as util_models
 
 from app.rz.models.notification import AliyunSMSData
-from app.rz.models.tagcloud import TagCloudPublic
 
 def performance_data_metrics():
     registry = CollectorRegistry()
@@ -192,39 +190,6 @@ def get_font_path(font_name: str) -> str:
         return system_fonts[0]
         
     raise ValueError(f"字体'{font_name}'未找到且无系统默认字体")
-
-async def tagcloud_generator(
-    tag_data: TagCloudPublic
-) -> str:
-    # 准备词频数据
-    word_freq: Dict[str, int] = {item.tag: item.count for item in tag_data.tags}
-    
-    font_path = get_font_path(tag_data.font)
-    
-    # 配置词云参数
-    wordcloud = WordCloud(
-        font_path=font_path,
-        width=tag_data.width,
-        height=tag_data.height,
-        background_color=tag_data.background_color
-    ).generate_from_frequencies(word_freq)
-    
-    # 创建临时文件
-    with tempfile.NamedTemporaryFile(
-        prefix='tagcloud_',
-        suffix='.png',
-        delete=True
-    ) as tmp_file:
-        file_path = tmp_file.name
-    
-    # 生成并保存词云图
-    plt.figure(figsize=(tag_data.width/100, tag_data.height/100))  # 转换为英寸(100dpi)
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis("off")
-    plt.savefig(file_path, bbox_inches='tight', pad_inches=0, dpi=100)
-    plt.close()
-    
-    return file_path
 
 async def create_images_zip(data: List[Tuple[str, bytes]]) -> bytes:
     """创建图像文件的 ZIP 压缩包"""
