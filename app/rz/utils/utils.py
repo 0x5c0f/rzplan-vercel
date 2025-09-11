@@ -1,12 +1,11 @@
-import tempfile, zipfile
-import random, string, json, os, io, uuid
+import zipfile
+import random, string, json, io, uuid
 import dns.resolver, httpx
-import matplotlib.pyplot as plt
 import matplotlib.font_manager as font_manager
 
 from prometheus_client import Gauge, CollectorRegistry
 from jinja2 import Template
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from functools import lru_cache
 from pathlib import Path
 
