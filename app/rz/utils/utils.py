@@ -1,13 +1,10 @@
 import zipfile
 import random, string, json, io, uuid
 import dns.resolver, httpx
-import matplotlib.font_manager as font_manager
 
 from prometheus_client import Gauge, CollectorRegistry
 from jinja2 import Template
 from typing import List, Tuple
-from functools import lru_cache
-from pathlib import Path
 
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_dysmsapi20170525.client import Client as Dysmsapi20170525Client
@@ -125,70 +122,6 @@ async def aliyun_sms_send(AliyunSMSData: AliyunSMSData) -> dysmsapi_20170525_mod
     
     runtime = util_models.RuntimeOptions()
     return client.send_sms_with_options(send_sms_request, runtime)
-
-@lru_cache(maxsize=None)
-def _get_system_fonts_list() -> list:
-    """
-    获取系统字体列表，并缓存结果。
-    """
-    return font_manager.findSystemFonts(fontpaths=None, fontext='ttf')
-
-@lru_cache(maxsize=None)
-def _get_local_fonts_dict(font_exts: tuple = ('.ttf', '.otf', '.ttc')) -> dict:
-    """
-    扫描 assets/fonts 目录，将字体文件的文件名（不含扩展名，小写）映射到其完整路径，进行缓存。
-    """
-    fonts = {}
-    local_fonts_dir = Path(__file__).parent.parent / "assets" / "fonts"
-    if local_fonts_dir.exists():
-        for font_file in local_fonts_dir.rglob("*"):
-            if font_file.suffix.lower() in font_exts:
-                fonts[font_file.stem.lower()] = str(font_file)
-    return fonts
-
-def get_font_path(font_name: str) -> str:
-    """
-    根据字体名称或路径返回可用字体文件路径，查找顺序：
-    1. 直接路径检查
-    2. 本地assets/fonts目录
-    3. 系统字体目录
-    返回匹配的字体路径或第一个系统字体
-    
-    Args:
-        font_name: 字体名称或路径
-        
-    Returns:
-        字体文件完整路径
-        
-    Raises:
-        ValueError: 找不到字体且无系统默认字体
-    """
-    # 如果是有效路径直接返回
-    font_path = Path(font_name)
-    if font_path.is_file():
-        return str(font_path)
-    
-    font_name_lower = font_name.lower()
-    FONT_EXTS = ('.ttf', '.otf', '.ttc')
-    
-    # 1. 检查本地字体
-    local_fonts = _get_local_fonts_dict(FONT_EXTS)
-    if font_name_lower in local_fonts:
-        return local_fonts[font_name_lower]
-    
-    # 2. 检查系统字体
-    system_fonts = _get_system_fonts_list()
-    for font_path in system_fonts:
-        font_stem = Path(font_path).stem.lower()
-        # 精确匹配字体名称
-        if font_name_lower == font_stem:
-            return font_path
-    
-    # 3. 返回第一个系统字体或报错
-    if system_fonts:
-        return system_fonts[0]
-        
-    raise ValueError(f"字体'{font_name}'未找到且无系统默认字体")
 
 async def create_images_zip(data: List[Tuple[str, bytes]]) -> bytes:
     """创建图像文件的 ZIP 压缩包"""
