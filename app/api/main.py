@@ -16,12 +16,10 @@ if settings.ENVIRONMENT == "local":
 from app.api.routes.rz import (
     performance_data,
     performance_tracking_config,
-    dify_chat_log,
 )
 
 api_router.include_router(performance_tracking_config.router)
 api_router.include_router(performance_data.router)
-api_router.include_router(dify_chat_log.router)
 
 
 from app.api.routes.rz.utils import (
