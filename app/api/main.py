@@ -23,12 +23,10 @@ api_router.include_router(performance_data.router)
 
 
 from app.api.routes.rz.utils import (
-    common_utils,
-    comfyui_utils
+    common_utils
 )
 
 api_router.include_router(common_utils.router)
-api_router.include_router(comfyui_utils.router)
 
 
 # subsystem routers

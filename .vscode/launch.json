@@ -20,8 +20,6 @@
             //     "BACKEND_CORS_ORIGINS": "",
             //     "LOG_LEVEL": "INFO",
             //     "LOG_FORMAT": "[%(asctime)s] - %(levelname)s - %(message)s",
-            //     "COMFYUI_SERVER_PORT": "8189",
-            //     "COMFYUI_SERVER_HOST": "127.0.0.1"
             // },
             "cwd": "${workspaceFolder}",
             "jinja": true,
