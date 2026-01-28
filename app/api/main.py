@@ -16,3 +16,7 @@ if settings.ENVIRONMENT == "local":
 # subsystem routers
 from app.rz.subsystem.mcp import main
 api_router.include_router(main.router)
+
+# RZ module routers
+from app.api.routes.rz import dict as dict_routes
+api_router.include_router(dict_routes.router)
