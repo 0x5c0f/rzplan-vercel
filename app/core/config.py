@@ -26,7 +26,7 @@ def parse_cors(v: Any) -> list[str] | str:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./backend/)
-        env_file="../.env",
+        env_file=".env",
         env_ignore_empty=True,
         extra="ignore",
     )
@@ -114,6 +114,9 @@ class Settings(BaseSettings):
         )
 
         return self
+
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "[%(asctime)s] - %(levelname)s - %(message)s"
 
 
 settings = Settings()  # type: ignore

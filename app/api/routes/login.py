@@ -76,6 +76,7 @@ def recover_password(email: str, session: SessionDep) -> Message:
 
 @router.post("/reset-password/")
 def reset_password(session: SessionDep, body: NewPassword) -> Message:
+    return Message(message="Password updated Failed")
     """
     Reset password
     """

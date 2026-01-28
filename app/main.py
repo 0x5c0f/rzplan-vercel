@@ -8,7 +8,9 @@ from app.core.config import settings
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
-    return f"{route.tags[0]}-{route.name}"
+    tag = route.tags[0] if route.tags else "subsystem"
+    return f"{tag}-{route.name}"
+    # return f"{route.tags[0]}-{route.name}"
 
 
 if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
@@ -31,3 +33,6 @@ if settings.all_cors_origins:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+from app.rz.subsystem.main import register_mcp_server
+register_mcp_server(app)  # Register the MCP server with the FastAPI app
