@@ -25,6 +25,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from app.models import SQLModel  # noqa
 from app.core.config import settings # noqa
 
+# Import all models to ensure they are registered with SQLModel.metadata
+from app.rz.models.dict_type import DictType  # noqa
+from app.rz.models.dict_item import DictItem  # noqa
+
 target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,
