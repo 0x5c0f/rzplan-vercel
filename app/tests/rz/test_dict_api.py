@@ -111,9 +111,9 @@ def test_delete_dict_type(client: TestClient) -> None:
     assert response.status_code == 200
     assert "soft deleted" in response.json()["message"]
     
-    # Verify it still exists but is_enabled=False
+    # Verify it still exists but is_enabled=False (need to query with enabled_only=false)
     get_response = client.get(
-        f"{settings.API_V1_STR}/dict/types/{type_id}",
+        f"{settings.API_V1_STR}/dict/types/{type_id}?enabled_only=false",
     )
     assert get_response.status_code == 200
     content = get_response.json()
@@ -312,16 +312,16 @@ def test_delete_dict_type_with_cascade(client: TestClient) -> None:
     assert response.status_code == 200
     assert "3 items" in response.json()["message"]
     
-    # Verify type is soft deleted
+    # Verify type is soft deleted (need to query with enabled_only=false)
     get_type_response = client.get(
-        f"{settings.API_V1_STR}/dict/types/{type_id}",
+        f"{settings.API_V1_STR}/dict/types/{type_id}?enabled_only=false",
     )
     assert get_type_response.status_code == 200
     assert get_type_response.json()["is_enabled"] == False
     
-    # Verify items are soft deleted
+    # Verify items are soft deleted (need to query with enabled_only=false)
     items_response = client.get(
-        f"{settings.API_V1_STR}/dict/items?type_id={type_id}",
+        f"{settings.API_V1_STR}/dict/items?type_id={type_id}&enabled_only=false",
     )
     assert items_response.status_code == 200
     items = items_response.json()["data"]

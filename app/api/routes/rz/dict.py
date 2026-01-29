@@ -259,15 +259,10 @@ def update_dict_item(
     if not item:
         raise HTTPException(status_code=404, detail="Dictionary item not found")
     
-    # If updating type_id, verify it exists
-    if item_in.type_id and item_in.type_id != item.type_id:
-        dict_type = dict_crud.get_dict_type(session=session, type_id=item_in.type_id)
-        if not dict_type:
-            raise HTTPException(status_code=404, detail="Dictionary type not found")
-    
     updated_item = dict_crud.update_dict_item(
         session=session, db_dict_item=item, dict_item_in=item_in
     )
+    
     return updated_item
 
 
