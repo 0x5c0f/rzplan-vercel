@@ -15,6 +15,7 @@ from app.rz.models.dict_item import (
     DictItemPublic,
     DictItemsPublic,
     DictItemCreate,
+    DictItemCreateSimple,
     DictItemUpdate,
 )
 from app.rz.crud import dict_crud
@@ -61,48 +62,6 @@ def get_dict_type_by_code(
     if not dict_type:
         raise HTTPException(status_code=404, detail="Dictionary type not found")
     return dict_type
-
-@router.get("/types/id:{type_id}/items",response_model=DictItemsPublic)
-def get_dict_items_by_type_id(
-    session: SessionDep,
-    type_id: uuid.UUID,
-    enabled_only: bool = Query(default=True, description="Only return enabled items"),
-    skip: int = 0,
-    limit: int = 100,
-):
-    """根据类型ID获取字典项列表"""
-    items, count = dict_crud.get_dict_items_by_type_id(
-        session=session, 
-        type_id=type_id, 
-        enabled_only=enabled_only, 
-        skip=skip, 
-        limit=limit
-    )
-
-    if not items:
-        raise HTTPException(status_code=404, detail="No dictionary items found for the given type ID")
-    return DictItemsPublic(data=items, count=count)
-
-@router.get("/types/code:{type_code}/items",response_model=DictItemsPublic)
-def get_dict_items_by_type_code(
-    session: SessionDep,
-    type_code: str,
-    enabled_only: bool = Query(default=True, description="Only return enabled items"),
-    skip: int = 0,
-    limit: int = 100,
-):
-    """根据类型代码获取字典项列表"""
-    items, count = dict_crud.get_dict_items_by_type_code(
-        session=session, 
-        type_code=type_code, 
-        enabled_only=enabled_only,
-        skip=skip, limit=limit
-    )
-
-    if not items:
-        raise HTTPException(status_code=404, detail="No dictionary items found for the given type code")
-    
-    return DictItemsPublic(data=items, count=count)
 
 @router.post("/types", response_model=DictTypePublic)
 def create_dict_type(
@@ -281,6 +240,142 @@ def delete_dict_item(
     item = dict_crud.get_dict_item(session=session, item_id=item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Dictionary item not found")
+    
+    dict_crud.delete_dict_item(session=session, db_dict_item=item, hard_delete=hard_delete)
+    
+    delete_type = "permanently deleted" if hard_delete else "soft deleted"
+    return Message(message=f"Dictionary item {delete_type} successfully")
+
+
+# Simplified DictItem endpoints (using type_code and item_code)
+@router.get("/{type_code}/items", response_model=DictItemsPublic)
+def list_dict_items_by_code(
+    session: SessionDep,
+    type_code: str,
+    enabled_only: bool = Query(default=True, description="Only return enabled items"),
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """根据类型代码获取字典项列表（简化接口）"""
+    items, count = dict_crud.get_dict_items_by_type_code(
+        session=session,
+        type_code=type_code,
+        enabled_only=enabled_only,
+        skip=skip,
+        limit=limit,
+    )
+    return DictItemsPublic(data=items, count=count)
+
+
+@router.post("/{type_code}/items", response_model=DictItemPublic)
+def create_dict_item_by_code(
+    *,
+    session: SessionDep,
+    type_code: str,
+    item_in: DictItemCreateSimple,
+) -> Any:
+    """通过类型代码创建字典项（简化接口）"""
+    # Verify type_code exists
+    dict_type = dict_crud.get_dict_type_by_code(session=session, type_code=type_code)
+    if not dict_type:
+        raise HTTPException(status_code=404, detail=f"Dictionary type '{type_code}' not found")
+    
+    # Check for duplicate item_code within the same type
+    existing = dict_crud.get_dict_item_by_code(
+        session=session, type_code=type_code, item_code=item_in.item_code
+    )
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dictionary item with code '{item_in.item_code}' already exists in type '{type_code}'",
+        )
+    
+    # Create DictItemCreate with type_id
+    item_create = DictItemCreate(
+        type_id=dict_type.id,
+        item_code=item_in.item_code,
+        item_value=item_in.item_value,
+        sort_order=item_in.sort_order,
+        is_enabled=item_in.is_enabled,
+    )
+    
+    item = dict_crud.create_dict_item(session=session, dict_item_in=item_create)
+    return item
+
+
+@router.get("/{type_code}/items/{item_code}", response_model=DictItemPublic)
+def get_dict_item_by_code(
+    session: SessionDep,
+    type_code: str,
+    item_code: str,
+    enabled_only: bool = Query(default=True, description="Only return enabled items"),
+) -> Any:
+    """通过类型代码和项代码获取字典项（简化接口）"""
+    item = dict_crud.get_dict_item_by_code(
+        session=session, type_code=type_code, item_code=item_code
+    )
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dictionary item '{item_code}' not found in type '{type_code}'",
+        )
+    
+    # Filter by enabled status if requested
+    if enabled_only and not item.is_enabled:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dictionary item '{item_code}' not found in type '{type_code}'",
+        )
+    
+    return item
+
+
+@router.put("/{type_code}/items/{item_code}", response_model=DictItemPublic)
+def update_dict_item_by_code(
+    *,
+    session: SessionDep,
+    type_code: str,
+    item_code: str,
+    item_in: DictItemUpdate,
+) -> Any:
+    """通过类型代码和项代码更新字典项（简化接口）"""
+    item = dict_crud.get_dict_item_by_code(
+        session=session, type_code=type_code, item_code=item_code
+    )
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dictionary item '{item_code}' not found in type '{type_code}'",
+        )
+    
+    updated_item = dict_crud.update_dict_item(
+        session=session, db_dict_item=item, dict_item_in=item_in
+    )
+    return updated_item
+
+
+@router.delete("/{type_code}/items/{item_code}")
+def delete_dict_item_by_code(
+    session: SessionDep,
+    type_code: str,
+    item_code: str,
+    hard_delete: bool = Query(default=False, description="Permanently delete (default: soft delete)"),
+) -> Message:
+    """通过类型代码和项代码删除字典项（简化接口）
+    
+    Args:
+        type_code: 字典类型代码
+        item_code: 字典项代码
+        hard_delete: 是否硬删除（默认False，软删除）
+    """
+    item = dict_crud.get_dict_item_by_code(
+        session=session, type_code=type_code, item_code=item_code
+    )
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dictionary item '{item_code}' not found in type '{type_code}'",
+        )
     
     dict_crud.delete_dict_item(session=session, db_dict_item=item, hard_delete=hard_delete)
     

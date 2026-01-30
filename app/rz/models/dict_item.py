@@ -47,6 +47,15 @@ class DictItemCreate(DictItemBase):
     type_id: uuid.UUID
 
 
+class DictItemCreateSimple(SQLModel):
+    """Simplified properties to receive on DictItem creation (without type_id)"""
+    item_code: str = Field(max_length=100)
+    item_value: str = Field(max_length=500)
+    sort_order: int = 0
+    is_enabled: bool = True
+    extra_data: str | None = None
+
+
 class DictItemUpdate(SQLModel):
     """Properties to receive on DictItem update"""
     item_value: str | None = Field(default=None, max_length=500)
