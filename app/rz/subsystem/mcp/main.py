@@ -31,10 +31,6 @@ async def list_mcp_operations():
             {
                 "name": "list_mcp",
                 "description": "查询当前 MCP 工具可用的有哪些.",
-            },
-            {
-                "name": "resolve_domain",
-                "description": "解析域名并获取其 IP 地址信息",
             }
         ]
     }
